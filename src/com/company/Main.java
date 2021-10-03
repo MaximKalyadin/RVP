@@ -1,117 +1,168 @@
 package com.company;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 
 public class Main {
 
+    static int countColumn = 1000;
+    static int[][] array = new int[countColumn][countColumn];
+
     public static void main(String[] args) throws InterruptedException, ExecutionException {
-        int countLines = 100;
-        int countColumns = 1000;
-        long startTime = System.currentTimeMillis();
-        int [][] array = generateArray(countLines,countColumns);
-        float average = findAverage(array,countLines,countColumns);
-        System.out.println("Среднее арифмитическое элементов матрицы: "+average);
-        oneThread(array, countLines, countColumns);
-        threadPoolExecutor(array, countLines, countColumns);
-        forkJoinPool(array, countLines, countColumns);
+        getArray();
+        System.out.println("Not Thread");
+        getAverageAboveArrayMainDiagonal();
+        one_Tread();
+        threadPoolExecutor();
+        forkJoinPool();
     }
 
-    public static int[][] generateArray(int countLines, int countColumns){
-        int[][] array = new int[countLines][countColumns];
-//System.out.println("Исходный массив:");
-        for (int i=0; i<array.length; i++){
-            for(int j=0; j<array[i].length;j++){
+    public static int[][] getArray() {
+        for(int i = 0; i < array.length; ++i) {
+            for(int j = 0; j < array[i].length; ++j) {
                 array[i][j] = (int)(Math.random() * 50);
-// System.out.printf("%4d",array[i][j]);
+               // System.out.print(array[i][j] + " ");
             }
-            System.out.println();
-        }
+           // System.out.println();
+        };
+       // System.out.println();
         return array;
     }
 
-    public static float findAverage(int[][] array, float countLines, float countColumns){
+    public static float getAverageAboveArrayMainDiagonal() {
         float sum = 0;
-        float average;
-        for (int i=0; i<array.length; i++){
-            for(int j=0; j<array[i].length;j++){
-                sum+=array[i][j];
+        for (int i = 0; i < countColumn; i++) {
+            for (int j = 0; j < countColumn; j++) {
+                if (j > i) {
+                    sum += array[i][j];
+                }
             }
         }
-        average = sum/(countLines*countColumns);
-        return average;
+        System.out.println( "average - " + sum / (countColumn * countColumn));
+        return sum / (countColumn * countColumn);
     }
 
-    public static void oneThread (int [][] array, float countLines,float countColumns) throws InterruptedException{
-        long start = System.currentTimeMillis();
-        Thread thread = new Thread(String.valueOf(findAverage(array, countLines, countColumns)));
+    public static float sumForLine(int array_row) {
+        float sum = 0;
+
+        for(int j = 0; j < countColumn; j++) {
+            if (j > array_row) {
+                sum += array[array_row][j];
+            }
+        }
+
+        return sum;
+    }
+
+    public static void one_Tread() throws InterruptedException {
+        System.out.println();
+        System.out.println("one_Tread");
+        long start_time = System.currentTimeMillis();
+
+        Thread thread = new Thread(String.valueOf(getAverageAboveArrayMainDiagonal()));
         thread.start();
         thread.join();
-        long stop = System.currentTimeMillis();
-        System.out.println("One thread result time: "+(stop-start));
+
+        long end_time = System.currentTimeMillis();
+        System.out.println("time - " + (end_time - start_time));
     }
 
-    public static float findSumSub(int [][] array, int line){
-        float subsum =0;
-        for (int j=0; j<array[line].length; j++){
-            subsum+=array[line][j];
-        }
-        return subsum;
-    }
+    public static void threadPoolExecutor() {
+        System.out.println();
+        float sum = 0;
 
-    public static int findSumString(int [][] array, int line){
-        int subsum =0;
-        for (int j=0; j<array[line].length; j++){
-            subsum+=array[line][j];
-        }
-        return subsum;
-    }
-
-
-    public static void threadPoolExecutor (int [][] array, float countLines,float countColumns) throws ExecutionException, InterruptedException {
-        float sum=0;
-        float value = 0;
         ExecutorService executorService = Executors.newCachedThreadPool();
+        long start_time = System.currentTimeMillis();
+        List<Future<Float>> results = new ArrayList();
 
-        long start = System.currentTimeMillis();
-        List<Future<Float>> futures = new ArrayList<>();
-
-        for (int i = 0; i < countLines; i++) {
-            final int line = i;
-            futures.add(CompletableFuture.supplyAsync(() -> findSumSub(array,line), executorService));
-        }
-        for (Future<Float> future : futures) {
-            sum += future.get();
+        for (int i = 0; i < countColumn; i++) {
+            int finalI = i;
+            results.add(CompletableFuture.supplyAsync(() -> { return sumForLine(finalI); }, executorService));
         }
 
-        value = sum/(countLines*countColumns);
+        for (Future<Float> task: results) {
+            try {
+                sum += task.get();
+            } catch (InterruptedException | ExecutionException ignored) { }
+        }
+        float average = sum / (countColumn * countColumn);
+        long end_time = System.currentTimeMillis();
 
-        long stop = System.currentTimeMillis();
-        System.out.println("ThreadPoolExecutor result time: "+ (stop-start));
+        System.out.println("threadPoolExecutor");
+        System.out.println("average - " + average);
+        System.out.println("time - " + (end_time - start_time));
+
         executorService.shutdown();
+
     }
 
-    public static void forkJoinPool(int [][] array, float countLines,float countColumns) throws InterruptedException, ExecutionException {
-        float sum=0;
-        float value = 0;
+    public static void forkJoinPool() throws InterruptedException, ExecutionException {
+        System.out.println();
+        float sum = 0;
+
         ForkJoinPool commonPool = ForkJoinPool.commonPool();
-        long start = System.currentTimeMillis();
-        List<Future<Float>> futures = new ArrayList<>();
+        long start_time = System.currentTimeMillis();
 
-        for (int i = 0; i < countLines; i++) {
-            final int line = i;
-            futures.add(CompletableFuture.supplyAsync(() -> findSumSub(array,line), commonPool));
-        }
-        for (Future<Float> future : futures) {
-            sum += future.get();
-        }
+        RecursiveTask<Integer> arrayTask = new RecursiveArray(array, countColumn, countColumn, 0);
+        commonPool.execute(arrayTask);
+        try {
+            sum += arrayTask.get();
+        } catch (InterruptedException | ExecutionException ignored) { }
 
-        value = sum/(countLines*countColumns);
+        float average = sum / (countColumn * countColumn);
+        long end_time = System.currentTimeMillis();
+
+        System.out.println("forkJoinPool");
+        System.out.println("average - " + average);
+        System.out.println("time - " + (end_time - start_time));
 
         commonPool.shutdown();
-        commonPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MICROSECONDS);
-        long stop = System.currentTimeMillis();
-        System.out.println("ForkJoinPool result time: "+ (stop-start));
+        commonPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+
+    }
+
+}
+
+class RecursiveArray extends RecursiveTask<Integer> {
+    private int[][] array;
+    private int countColumn;
+    private int countRow;
+    private int index;
+
+    public RecursiveArray(int[][] array, int countRow, int countColumn, int index) {
+        this.array = array;
+        this.countColumn = countColumn;
+        this.countRow = countRow;
+        this.index = index;
+    }
+
+    @Override
+    protected Integer compute() {
+        if (array.length > 1){
+            return ForkJoinTask.invokeAll(createSubTask()).stream().mapToInt(ForkJoinTask::join).sum();
+        } else {
+            return processing();
+        }
+    }
+
+    private Collection<RecursiveArray> createSubTask() {
+        List<RecursiveArray> recArray = new ArrayList<>();
+        recArray.add(new RecursiveArray(Arrays.copyOfRange(array, 0, array.length / 2), countRow / 2, countColumn, index));
+        recArray.add(new RecursiveArray(Arrays.copyOfRange(array, array.length / 2, array.length), countRow - countRow / 2, countColumn, index + countRow / 2));
+        return recArray;
+    }
+
+    private Integer processing() {
+        int result = 0;
+        for(int j = 0; j < countColumn; j++) {
+            if (j > index) {
+                result += array[0][j];
+            }
+        }
+        return result;
     }
 }
