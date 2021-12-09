@@ -1,0 +1,29 @@
+plugins {
+    id 'org.springframework.boot' version '2.0.4.RELEASE'
+}
+
+group 'ru.ulstu.is'
+version '0.0.1-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+compileJava {
+    options.encoding = "UTF-8"
+}
+
+dependencies {
+    compile group: 'org.springframework.boot', name: 'spring-boot-starter'
+    compile group: 'org.apache.ignite', name: 'ignite-core', version: '2.7.0'
+    compile group: 'org.apache.ignite', name: 'ignite-spring', version: '2.7.0'
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test'
+}
